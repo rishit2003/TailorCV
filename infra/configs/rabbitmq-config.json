@@ -1,0 +1,73 @@
+{
+  "comment": "RabbitMQ Configuration for TailorCV Event System",
+  "description": "This file documents the RabbitMQ setup for async CV processing",
+  
+  "purpose": "Define exchanges, queues, and bindings for background embedding pipeline",
+  
+  "TODO": [
+    "Implement these configurations when setting up RabbitMQ",
+    "Create exchange, queues, and bindings programmatically or via management UI"
+  ],
+  
+  "exchanges_to_create": {
+    "cv_exchange": {
+      "type": "topic",
+      "durable": true,
+      "description": "Main exchange for CV-related events"
+    }
+  },
+  
+  "queues_to_create": {
+    "cv_events": {
+      "durable": true,
+      "purpose": "Main queue for CV creation events consumed by VectorService",
+      "settings": {
+        "message_ttl": "24 hours (86400000 ms)",
+        "max_length": 10000,
+        "dead_letter_exchange": "Use for failed messages"
+      }
+    },
+    "cv_events_dlq": {
+      "durable": true,
+      "purpose": "Dead letter queue for failed CV processing and manual inspection"
+    }
+  },
+  
+  "bindings_to_create": [
+    {
+      "exchange": "cv_exchange",
+      "queue": "cv_events",
+      "routing_key": "cv.created",
+      "description": "Route cv.created events to cv_events queue"
+    }
+  ],
+  
+  "event_documentation": {
+    "cv.created": {
+      "description": "Published when a new CV is stored in MongoDB",
+      "publisher": "StoringService (app/events.py)",
+      "consumer": "VectorService (app/mq_consumer.py)",
+      "payload_schema": {
+        "cv_id": "string (SHA256 hash of CV text)"
+      },
+      "payload_example": {
+        "cv_id": "a3f5b8c9d2e1f4a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0"
+      }
+    }
+  },
+  
+  "implementation_notes": [
+    "StoringService publishes to 'cv_exchange' with routing key 'cv.created'",
+    "VectorService consumes from 'cv_events' queue",
+    "Failed messages route to 'cv_events_dlq' for debugging",
+    "Set TTL to prevent queue buildup if consumers are down",
+    "Set max length to prevent memory overflow"
+  ],
+  
+  "reference": {
+    "publisher_location": "storing_service/app/events.py",
+    "consumer_location": "vector_service/app/mq_consumer.py",
+    "library": "pika (Python RabbitMQ client)"
+  }
+}
+

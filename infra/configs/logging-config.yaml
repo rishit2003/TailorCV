@@ -1,0 +1,44 @@
+# Logging Configuration for TailorCV Microservices
+# This file will define logging settings for all services
+# 
+# Purpose:
+# - Standardize logging across all microservices
+# - Define log formats (simple, detailed, JSON for production)
+# - Configure handlers (console, file, error file)
+# - Set log levels per service
+#
+# Structure to implement:
+# version: 1
+# disable_existing_loggers: false
+#
+# formatters:
+#   - default: Simple format for console output
+#   - detailed: Includes module, function, line number
+#   - json: Structured logging for production monitoring
+#
+# handlers:
+#   - console: Output to stdout
+#   - file: Rotating file handler (10MB, 5 backups)
+#   - error_file: Separate file for ERROR level logs
+#
+# loggers:
+#   - Root logger (catches all)
+#   - api_gateway: API Gateway service logs
+#   - storing_service: StoringService logs
+#   - gemini_service: GeminiService logs
+#   - vector_service: VectorService logs
+#   - Third-party libraries (uvicorn, httpx) - reduce verbosity
+#
+# Usage in service code:
+# import logging.config
+# import yaml
+#
+# with open('infra/configs/logging-config.yaml', 'r') as f:
+#     config = yaml.safe_load(f)
+#     logging.config.dictConfig(config)
+#
+# logger = logging.getLogger('storing_service')
+# logger.info('Service started')
+#
+# Implement this configuration when setting up logging infrastructure
+

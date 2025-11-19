@@ -1,0 +1,19 @@
+# Docker Compose for Local Development
+# Runs all services and infrastructure components
+#
+# Services:
+# - api_gateway (port 8000)
+# - storing_service (port 8001)
+# - gemini_service (port 8002)
+# - vector_service (port 8003)
+# - mongodb (port 27017)
+# - redis (port 6379)
+# - rabbitmq (port 5672, management 15672)
+#
+# Note: Pinecone is cloud-based, not included here
+#
+# Usage:
+# docker-compose up -d
+#
+# This file will be populated with actual service definitions later
+
