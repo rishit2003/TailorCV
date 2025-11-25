@@ -24,3 +24,45 @@
 # - Embedding generation
 # - Batch processing for efficiency
 
+# vector_service/app/embedder.py
+
+from functools import lru_cache
+from typing import List
+
+import numpy as np
+from sentence_transformers import SentenceTransformer
+
+
+MODEL_NAME = "BAAI/bge-large-en-v1.5"
+
+
+@lru_cache(maxsize=1)
+def get_model() -> SentenceTransformer:
+    """
+    Lazily load and cache the embedding model.
+    Called once on first use (or at startup from main.py).
+    """
+    model = SentenceTransformer(MODEL_NAME)
+    # Recommended for BGE: normalize embeddings
+    return model
+
+
+def embed_text(text: str) -> List[float]:
+    """
+    Embed a single text to a list[float].
+    """
+    model = get_model()
+    emb = model.encode(text, normalize_embeddings=True)
+    return emb.tolist()
+
+
+def embed_batch(texts: List[str]) -> List[List[float]]:
+    """
+    Embed a batch of texts.
+    """
+    if not texts:
+        return []
+
+    model = get_model()
+    embs = model.encode(texts, normalize_embeddings=True)
+    return [e.tolist() for e in embs]
