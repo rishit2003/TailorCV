@@ -1,6 +1,8 @@
 import os
 import requests
 from dotenv import load_dotenv
+from app.embedder import chunk_structured_sections, chunk_experience_bullets, chunk_projects_bullets, embed_chunks
+from app.pinecone_client import upsert_chunks_to_pinecone
 
 load_dotenv()
 
@@ -13,9 +15,9 @@ def process_cv_for_embedding(cv_id: str):
     Flow:
     1. Fetch CV from StoringService
     2. Extract structured_sections
-    3. Chunk sections (TODO: implement chunking)
-    4. Embed chunks (TODO: implement embedding)
-    5. Upload to Pinecone (TODO: implement Pinecone upload)
+    3. Chunk sections (semantic algorithm)
+    4. Embed chunks (BGE-large)
+    5. Upload to Pinecone
     
     Args:
         cv_id: CV identifier
@@ -23,7 +25,7 @@ def process_cv_for_embedding(cv_id: str):
     print(f"Processing CV for embedding: {cv_id}")
     
     try:
-        # Fetch CV from StoringService
+        # Step 1: Fetch CV from StoringService
         response = requests.get(
             f"{STORING_SERVICE_URL}/internal/get_cv/{cv_id}",
             timeout=10
@@ -38,16 +40,47 @@ def process_cv_for_embedding(cv_id: str):
         print(f"Fetched CV: {cv_id}")
         print(f"Sections found: {list(structured_sections.keys())}")
         
-        # TODO: Implement chunking logic
-        # chunks = chunk_structured_sections(structured_sections, cv_id)
+        # Step 2: Chunk structured sections
+        all_chunks = []
         
-        # TODO: Implement embedding
-        # embedded_chunks = embed_chunks(chunks)
+        # Handle experience separately (each bullet = 1 chunk)
+        if "experience" in structured_sections and structured_sections["experience"]:
+            experience_chunks = chunk_experience_bullets(
+                structured_sections["experience"], 
+                cv_id
+            )
+            all_chunks.extend(experience_chunks)
+            print(f"Created {len(experience_chunks)} experience chunks")
         
-        # TODO: Upload to Pinecone
-        # upsert_to_pinecone(embedded_chunks)
+        # Handle projects separately (each bullet = 1 chunk, or description if no bullets)
+        if "projects" in structured_sections and structured_sections["projects"]:
+            project_chunks = chunk_projects_bullets(
+                structured_sections["projects"],
+                cv_id
+            )
+            all_chunks.extend(project_chunks)
+            print(f"Created {len(project_chunks)} project chunks")
         
-        print(f"CV processing complete: {cv_id}")
+        # Handle other sections (summary, skills, education, leadership, etc.)
+        other_sections = {k: v for k, v in structured_sections.items() 
+                         if k not in ["experience", "projects"]}
+        other_chunks = chunk_structured_sections(other_sections, cv_id)
+        all_chunks.extend(other_chunks)
+        print(f"Created {len(other_chunks)} other chunks")
+        
+        print(f"Total chunks created: {len(all_chunks)}")
+        
+        if not all_chunks:
+            print("Warning: No chunks created from CV")
+            return
+        
+        # Step 3: Embed chunks
+        embedded_chunks = embed_chunks(all_chunks)
+        
+        # Step 4: Upload to Pinecone
+        upsert_chunks_to_pinecone(embedded_chunks)
+        
+        print(f"CV processing complete: {cv_id} - {len(embedded_chunks)} chunks uploaded to Pinecone")
         
     except Exception as e:
         print(f"Error processing CV {cv_id}: {e}")

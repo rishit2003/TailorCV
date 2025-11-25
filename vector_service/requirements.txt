@@ -3,7 +3,7 @@
 
 fastapi==0.104.1
 uvicorn==0.24.0
-pinecone-client==2.2.4
+pinecone==5.0.0
 transformers==4.35.2
 torch==2.1.1
 sentence-transformers==2.2.2

@@ -64,6 +64,11 @@ IMPORTANT INSTRUCTIONS:
 
 3. EXTRACT technologies from experience bullet points even if not explicitly in skills section
 
+4. For PROJECTS section, extract bullet points similar to experience:
+   - Break down project description into individual achievement bullets
+   - Each bullet should describe a specific accomplishment or feature
+   - Extract technologies used in the project
+
 4. OPTIONAL sections (only include if present in CV):
    - certifications
    - publications
@@ -141,7 +146,8 @@ Return ONLY valid JSON (no markdown, no code blocks, no explanation) with this E
   "projects": [
     {{
       "name": "project name",
-      "description": "brief description or null",
+      "description": "brief overview or null",
+      "bullets": ["full bullet point describing achievement", "another bullet point"],
       "technologies": [],
       "link": "project link or null",
       "start_date": "start date or null",
