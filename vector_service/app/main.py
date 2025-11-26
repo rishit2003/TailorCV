@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 import threading
 from app.mq_consumer import start_consumer
+from app.api import router
 
 app = FastAPI(title="VectorService", version="1.0.0")
+app.include_router(router)
 
 @app.get("/health")
 async def health_check():

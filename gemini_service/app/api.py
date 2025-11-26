@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Any
-from app.service import structure_cv, find_missing_keywords, calculate_score
+from app.service import structure_cv, find_missing_keywords, calculate_score, generate_tailored_bullets
 
 router = APIRouter()
 
@@ -105,4 +105,32 @@ async def score_endpoint(request: ScoreRequest):
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to calculate score: {str(e)}")
+
+class TailoredBulletsRequest(BaseModel):
+    job_description: str
+    similar_chunks: List[Dict[str, Any]]
+
+class TailoredBulletsResponse(BaseModel):
+    tailored_bullets: List[str]
+    count: int
+
+@router.post("/internal/tailored_bullets", response_model=TailoredBulletsResponse)
+async def tailored_bullets_endpoint(request: TailoredBulletsRequest):
+    """
+    Generate tailored bullet points based on job description and similar CV chunks
+    
+    Args:
+        job_description: Job description text
+        similar_chunks: List of similar CV chunks with text, section, cv_id, score
+        
+    Returns:
+        tailored_bullets list and count
+    """
+    try:
+        result = generate_tailored_bullets(request.job_description, request.similar_chunks)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate tailored bullets: {str(e)}")
 

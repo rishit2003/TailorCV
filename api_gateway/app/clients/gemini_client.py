@@ -76,3 +76,30 @@ def get_score(cv_id: str, job_description: str) -> dict:
         raise Exception(f"GeminiService error: {response.status_code}")
     
     return response.json()
+
+def generate_tailored_bullets(job_description: str, similar_chunks: list) -> dict:
+    """
+    Generate tailored bullet points from GeminiService
+    
+    Args:
+        job_description: Job description text
+        similar_chunks: List of similar CV chunks
+        
+    Returns:
+        {"tailored_bullets": list, "count": int}
+    """
+    url = f"{GEMINI_SERVICE_URL}/internal/tailored_bullets"
+    
+    response = requests.post(
+        url,
+        json={
+            "job_description": job_description,
+            "similar_chunks": similar_chunks
+        },
+        timeout=120
+    )
+    
+    if response.status_code != 200:
+        raise Exception(f"GeminiService error: {response.status_code}")
+    
+    return response.json()

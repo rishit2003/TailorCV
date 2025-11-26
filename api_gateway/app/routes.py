@@ -4,7 +4,7 @@ from typing import List, Dict, Any, Optional
 import io
 
 # Import HTTP clients
-from app.clients import gemini_client, storing_client
+from app.clients import gemini_client, storing_client, vector_client
 
 # Try to import PyPDF2 for PDF extraction
 try:
@@ -29,6 +29,13 @@ class KeywordsRequest(BaseModel):
 class ScoreRequest(BaseModel):
     cv_id: str
     job_description: str
+
+class TailoredBulletsRequest(BaseModel):
+    job_description: str
+
+class SimilarCVsRequest(BaseModel):
+    job_description: str
+    top_k: Optional[int] = 3
 
 # ==========================================
 # Public Endpoints
@@ -155,3 +162,75 @@ async def get_score(request: ScoreRequest):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to calculate score: {str(e)}")
+
+@router.post("/tailored_bullets")
+async def get_tailored_bullets(request: TailoredBulletsRequest):
+    """
+    Get tailored bullet points for job description
+    
+    Flow:
+    1. Call VectorService /internal/similar_chunks to find relevant CV chunks
+    2. Call GeminiService /internal/tailored_bullets to generate bullets
+    3. Return tailored bullets
+    """
+    try:
+        # Step 1: Find similar chunks (threshold-based: all chunks with score >= 0.75)
+        similar_chunks = vector_client.find_similar_chunks(
+            request.job_description, 
+            min_score=0.75,  # Only chunks with 75%+ similarity
+            max_chunks_to_query=50  # Query top 50, filter by threshold (ranked best to worst)
+        )
+        
+        if not similar_chunks:
+            return {
+                "success": True,
+                "message": "No similar chunks found. Try uploading more CVs.",
+                "tailored_bullets": [],
+                "count": 0
+            }
+        
+        # Step 2: Generate tailored bullets
+        result = gemini_client.generate_tailored_bullets(request.job_description, similar_chunks)
+        
+        return {
+            "success": True,
+            "tailored_bullets": result.get("tailored_bullets", []),
+            "count": result.get("count", 0),
+            "chunks_used": len(similar_chunks)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate tailored bullets: {str(e)}")
+
+@router.post("/similar_cvs")
+async def get_similar_cvs(request: SimilarCVsRequest):
+    """
+    Get top-k similar CVs to job description
+    
+    Flow:
+    1. Call VectorService /internal/search_top_k_cvs
+    2. Return list of CVs ranked by similarity score
+    
+    Returns:
+        {
+            "success": true,
+            "cvs": [
+                {"cv_id": "...", "score": 1.23},
+                ...
+            ]
+        }
+    """
+    try:
+        # Call VectorService to find top-k similar CVs
+        cvs = vector_client.search_top_k_cvs(
+            request.job_description,
+            top_k=request.top_k,
+            raw_top_k=50  # Query top 50 chunks before aggregation
+        )
+        
+        return {
+            "success": True,
+            "cvs": cvs,
+            "count": len(cvs)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to find similar CVs: {str(e)}")

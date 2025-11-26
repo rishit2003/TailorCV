@@ -482,9 +482,77 @@ function showError(message) {
     hideLoading();
 }
 
+async function generateTailoredBullets() {
+    const jobDescription = document.getElementById('job-description-input').value;
+    
+    if (!jobDescription.trim()) {
+        showError('Please paste a job description first!');
+        return;
+    }
+    
+    showLoading('Finding similar CV chunks and generating tailored bullets...');
+    clearResults();
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/tailored_bullets`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                job_description: jobDescription
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.detail || 'Failed to generate tailored bullets');
+        }
+        
+        hideLoading();
+        displayBulletsResults(data);
+        
+    } catch (error) {
+        hideLoading();
+        showError(`Generation failed: ${error.message}`);
+    }
+}
+
+function displayBulletsResults(data) {
+    const container = document.getElementById('bullets-results');
+    const content = document.getElementById('bullets-content');
+    
+    let html = `
+        <div class="bullets-info">
+            <p><strong>Generated:</strong> ${data.count} bullet points</p>
+            <p><strong>Chunks Used:</strong> ${data.chunks_used || 'N/A'}</p>
+        </div>
+        <div class="bullets-list">
+    `;
+    
+    if (data.tailored_bullets && data.tailored_bullets.length > 0) {
+        data.tailored_bullets.forEach((bullet, index) => {
+            html += `
+                <div class="bullet-item">
+                    <span class="bullet-number">${index + 1}.</span>
+                    <span class="bullet-text">${bullet}</span>
+                </div>
+            `;
+        });
+    } else {
+        html += '<p>No bullets generated. Try uploading more CVs or adjusting your job description.</p>';
+    }
+    
+    html += '</div>';
+    
+    content.innerHTML = html;
+    container.classList.remove('hidden');
+    document.getElementById('results-container').classList.remove('hidden');
+}
+
 function clearResults() {
     document.getElementById('keywords-results').classList.add('hidden');
     document.getElementById('score-results').classList.add('hidden');
+    document.getElementById('bullets-results').classList.add('hidden');
     document.getElementById('error-message').classList.add('hidden');
 }
 

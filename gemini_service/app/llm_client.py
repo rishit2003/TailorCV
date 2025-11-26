@@ -10,7 +10,7 @@ def initialize_gemini(service_type: str = "structure"):
     Initialize Gemini API with service-specific API key
     
     Args:
-        service_type: "structure" | "keywords" | "score"
+        service_type: "structure" | "keywords" | "score" | "bullets"
         
     Returns:
         Gemini model instance
@@ -21,7 +21,8 @@ def initialize_gemini(service_type: str = "structure"):
     api_key_map = {
         "structure": os.getenv('GEMINI_API_KEY_STRUCTURE'),
         "keywords": os.getenv('GEMINI_API_KEY_KEYWORDS'),
-        "score": os.getenv('GEMINI_API_KEY_SCORE')
+        "score": os.getenv('GEMINI_API_KEY_SCORE'),
+        "bullets": os.getenv('GEMINI_API_KEY_STRUCTURE')  # Reuse structure key or add new one
     }
     
     api_key = api_key_map.get(service_type)
@@ -638,4 +639,178 @@ def call_gemini_for_score(structured_sections: dict, job_description: str) -> di
         result["recommendations"] = []
     
     return result
+
+def create_tailored_bullets_prompt(job_description: str, similar_chunks: list) -> str:
+    """
+    Create expert-level prompt for Gemini to generate tailored CV bullet points
+    
+    Uses XYZ format: Action Verb (X) + Task/Action (Y) + Quantifiable Result (Z)
+    
+    Args:
+        job_description: Raw job description text
+        similar_chunks: List of similar CV chunks with text, section, cv_id, score
+        
+    Returns:
+        Formatted prompt string
+    """
+    # Format chunks for prompt
+    chunks_text = ""
+    for i, chunk in enumerate(similar_chunks, 1):
+        section = chunk.get("section", "unknown")
+        text = chunk.get("text", "")
+        score = chunk.get("score", 0.0)
+        chunks_text += f"\nChunk {i} (Section: {section}, Relevance: {score:.2f}):\n{text}\n"
+    
+    return f"""
+You are an EXPERT RESUME WRITER and CAREER COACH with deep expertise in:
+- Writing compelling, ATS-optimized resume bullet points
+- Using the XYZ format (Action Verb + Task + Quantifiable Result)
+- Tailoring bullet points to match job requirements
+- Highlighting technical skills and achievements effectively
+- Creating impact-driven statements that stand out to recruiters
+
+YOUR MISSION:
+Generate 5-6 tailored, professional resume bullet points based on the job description requirements and relevant CV chunks from RELEVANT CV CHUNKS below, anaylze those chunks to create tailor bullet points.
+
+Tip: As you may know after you aanayzle and understand, those chunks high score could be from experience, and project that would be effective for you to generate bullet points. (it's like doing RAG with those chunks data from vector to create more tailored and effective response)
+
+DO NOT generate generic bullets. Base your bullets on the ACTUAL content in the chunks below to create tailor bullet points.
+
+JOB DESCRIPTION:
+{job_description}
+
+RELEVANT CV CHUNKS (from semantic search - various sections):
+{chunks_text}
+
+CRITICAL REQUIREMENTS - XYZ FORMAT:
+
+Every bullet point MUST follow the XYZ format:
+- X = Strong Action Verb (Led, Developed, Implemented, Designed, Optimized, etc.)
+- Y = Specific Task/Action (What you did, technology used, scope)
+- Z = Quantifiable Result/Impact (Numbers, percentages, metrics, outcomes)
+
+EXAMPLES OF EXCELLENT XYZ BULLETS:
+ "Led development of microservices architecture using FastAPI and Docker, reducing API latency by 40% and improving system scalability"
+ "Implemented CI/CD pipelines with Jenkins and Kubernetes, automating deployments and reducing release time from 2 days to 2 hours"
+ "Designed and developed RESTful APIs handling 10M+ requests daily, improving response time by 50% through query optimization"
+ "Optimized database queries and indexing strategies, reducing query execution time from 500ms to 50ms and cutting infrastructure costs by 30%"
+ "Collaborated with cross-functional teams of 8+ engineers to deliver features 20% faster using Agile methodologies"
+
+BAD EXAMPLES (AVOID):
+ "Worked on APIs" (no action verb, no metrics)
+ "Developed software" (too vague, no impact)
+ "Used Python" (not a bullet point, no context)
+
+BULLET POINT GUIDELINES:
+
+1. ACTION VERBS (X):
+   - Use strong, specific verbs: Led, Developed, Implemented, Designed, Optimized, Built, Created, Architected, Deployed, Automated
+   - Avoid weak verbs: Worked, Did, Used, Helped, Assisted (unless necessary)
+
+2. TASK/ACTION (Y):
+   - Be specific about technology, tools, frameworks mentioned in JD
+   - Include scope: team size, project scale, system complexity
+   - Reference relevant skills from job description
+
+3. QUANTIFIABLE RESULT (Z):
+   - ALWAYS include numbers: percentages, counts, time reductions, cost savings
+   - Show impact: "improved by X%", "reduced by Y", "handled Z requests"
+   - If exact numbers aren't available, use reasonable estimates based on context
+
+4. LENGTH:
+   - Each bullet: 1-2 lines maximum
+   - Concise but impactful
+   - No fluff or filler words
+
+5. RELEVANCE & SOURCE MATERIAL:
+   - CRITICAL: Use the ACTUAL text from the chunks provided above
+   - Each chunk shows its section (experience, projects, skills, etc.) and relevance score
+   - Prioritize chunks with higher relevance scores (closer to 1.0)
+   - Extract key achievements, technologies, and metrics from the chunk text
+   - Combine related chunks from different sections to create comprehensive bullets
+   - DO NOT invent information - work with what's in the chunks
+
+6. VARIETY:
+   - Mix different types: technical achievements, leadership, optimization, collaboration
+   - Cover different aspects: development, deployment, optimization, team work
+   - Use chunks from different sections (experience, projects, etc.) to show breadth
+
+7. USING THE CHUNK TEXT:
+   - Read each chunk carefully - it contains real experience/project details
+   - Extract specific technologies, achievements, and metrics from chunk text
+   - Transform chunk content into polished XYZ-format bullets
+   - If a chunk mentions "Built REST API with FastAPI", use that in your bullet
+   - If a chunk has metrics (e.g., "reduced latency by 40%"), include them
+   - Enhance and polish, but stay true to the chunk content
+
+OUTPUT FORMAT:
+Return ONLY a JSON array of bullet point strings (no markdown, no code blocks, no explanation):
+
+[
+  "Led development of microservices using FastAPI, reducing API latency by 40%",
+  "Implemented CI/CD pipelines with Docker and Kubernetes, improving deployment speed by 3x",
+  "Designed RESTful APIs handling 10M+ requests daily with 99.9% uptime",
+  "Optimized database queries reducing response time from 500ms to 50ms",
+  "Collaborated with cross-functional teams to deliver features 20% faster"
+]
+
+CRITICAL RULES:
+1. Return ONLY the JSON array - no markdown, no code blocks, no explanatory text
+2. Generate exactly 5-6 bullet points (prefer 6 if you have enough context)
+3. Each bullet MUST follow XYZ format with quantifiable results
+4. Use strong action verbs and specific technical details
+5. Make bullets ready to use - professional, polished, ATS-friendly
+6. Base bullets on the provided chunks, but enhance them to match JD requirements
+7. If chunks don't provide enough context, create realistic bullets that align with JD requirements
+
+BEGIN GENERATION NOW:
+"""
+
+def call_gemini_for_tailored_bullets(job_description: str, similar_chunks: list) -> dict:
+    """
+    Call Gemini API to generate tailored bullet points
+    
+    Args:
+        job_description: Raw job description text
+        similar_chunks: List of similar CV chunks with text, section, cv_id, score
+        
+    Returns:
+        Dictionary with tailored_bullets list
+    """
+    model = initialize_gemini(service_type="bullets")
+    prompt = create_tailored_bullets_prompt(job_description, similar_chunks)
+    
+    response = model.generate_content(prompt)
+    response_text = response.text.strip()
+    
+    # Clean up response (remove markdown if present)
+    if response_text.startswith('```'):
+        lines = response_text.split('\n')
+        response_text = '\n'.join(lines[1:-1])
+        if response_text.startswith('json'):
+            response_text = response_text[4:].strip()
+    
+    # Parse JSON
+    try:
+        bullets = json.loads(response_text)
+        if not isinstance(bullets, list):
+            raise ValueError("Response is not a list")
+        
+        # Validate bullets
+        validated_bullets = []
+        for bullet in bullets:
+            if isinstance(bullet, str) and bullet.strip():
+                validated_bullets.append(bullet.strip())
+        
+        if len(validated_bullets) < 3:
+            raise ValueError(f"Expected at least 3 bullets, got {len(validated_bullets)}")
+        
+        return {
+            "tailored_bullets": validated_bullets,
+            "count": len(validated_bullets)
+        }
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Failed to parse Gemini response as JSON: {e}\nResponse: {response_text}")
+    except Exception as e:
+        raise ValueError(f"Failed to process tailored bullets: {e}")
 

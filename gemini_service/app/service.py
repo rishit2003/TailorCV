@@ -1,5 +1,6 @@
 from datetime import datetime
-from app.llm_client import call_gemini_to_structure_cv, call_gemini_for_missing_keywords, call_gemini_for_score
+from typing import List, Dict, Any
+from app.llm_client import call_gemini_to_structure_cv, call_gemini_for_missing_keywords, call_gemini_for_score, call_gemini_for_tailored_bullets
 from app.storing_client import get_cv
 
 def structure_cv(cv_text: str) -> dict:
@@ -138,4 +139,30 @@ def calculate_score(cv_id: str, job_description: str) -> dict:
         "gaps": score_result["gaps"],
         "recommendations": score_result["recommendations"]
     }
+
+def generate_tailored_bullets(job_description: str, similar_chunks: List[Dict[str, Any]]) -> dict:
+    """
+    Generate tailored bullet points based on job description and similar CV chunks
+    
+    Args:
+        job_description: Job description text
+        similar_chunks: List of similar CV chunks with text, section, cv_id, score
+        
+    Returns:
+        Dictionary with tailored_bullets list and count
+        
+    Raises:
+        ValueError: If job description is empty or chunks are invalid
+    """
+    # Validate inputs
+    if not job_description or not job_description.strip():
+        raise ValueError("Job description cannot be empty")
+    
+    if not similar_chunks or len(similar_chunks) == 0:
+        raise ValueError("Similar chunks cannot be empty")
+    
+    # Call Gemini to generate tailored bullets
+    result = call_gemini_for_tailored_bullets(job_description, similar_chunks)
+    
+    return result
 

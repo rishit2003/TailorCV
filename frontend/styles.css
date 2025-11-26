@@ -222,6 +222,12 @@ select:focus {
     color: white;
 }
 
+.btn-warning {
+    background: #ffc107;
+    color: #333;
+    font-weight: 600;
+}
+
 .action-buttons {
     display: flex;
     gap: 15px;
@@ -469,6 +475,58 @@ select:focus {
     border-radius: 8px;
     margin-bottom: 8px;
     border-left: 4px solid #667eea;
+}
+
+/* ==========================================
+   Tailored Bullets Styles
+   ========================================== */
+
+.bullets-info {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #e7f3ff;
+    border-radius: 8px;
+    border-left: 4px solid #ffc107;
+}
+
+.bullets-info p {
+    margin: 5px 0;
+    color: #495057;
+}
+
+.bullets-list {
+    margin-top: 20px;
+}
+
+.bullet-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    border-left: 4px solid #ffc107;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.bullet-item:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.bullet-number {
+    font-weight: bold;
+    color: #ffc107;
+    margin-right: 12px;
+    font-size: 1.1em;
+    min-width: 25px;
+}
+
+.bullet-text {
+    flex: 1;
+    color: #495057;
+    line-height: 1.6;
+    font-size: 1em;
 }
 
 /* ==========================================

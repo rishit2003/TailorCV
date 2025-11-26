@@ -119,3 +119,48 @@ def upsert_chunks_to_pinecone(chunks: List[Dict[str, Any]]):
         print(f"Upserted batch {i//batch_size + 1}: {len(batch)} vectors")
     
     print(f"Successfully uploaded {len(vectors)} chunks to Pinecone")
+
+def query_similar(query_vector: List[float], top_k: int = 10) -> List[Dict[str, Any]]:
+    """
+    Query Pinecone for similar vectors
+    
+    Args:
+        query_vector: 768-dimensional embedding vector
+        top_k: Number of similar vectors to return
+        
+    Returns:
+        List of matches with metadata and scores:
+        [
+            {
+                "id": "vector_id",
+                "score": 0.87,
+                "metadata": {"text": "...", "section": "...", "cv_id": "..."}
+            },
+            ...
+        ]
+    """
+    if not query_vector:
+        raise ValueError("Query vector cannot be empty")
+    
+    if len(query_vector) != 768:
+        raise ValueError(f"Query vector must be 768 dimensions, got {len(query_vector)}")
+    
+    index = get_index()
+    
+    # Query Pinecone
+    results = index.query(
+        vector=query_vector,
+        top_k=top_k,
+        include_metadata=True
+    )
+    
+    # Format results
+    matches = []
+    for match in results.matches:
+        matches.append({
+            "id": match.id,
+            "score": float(match.score),
+            "metadata": match.metadata or {}
+        })
+    
+    return matches

@@ -292,6 +292,23 @@ def chunk_experience_bullets(experience_list: List[Dict], cv_id: str) -> List[Di
     
     return chunks
 
+def embed_text(text: str) -> List[float]:
+    """
+    Embed a single text string using BGE-base model
+    
+    Args:
+        text: Text string to embed
+        
+    Returns:
+        768-dimensional embedding vector as list of floats
+    """
+    if not text or not text.strip():
+        raise ValueError("Text cannot be empty")
+    
+    model = get_model()
+    embedding = model.encode([text], normalize_embeddings=True, show_progress_bar=False)[0]
+    return embedding.tolist()
+
 def embed_chunks(chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Embed chunks using BGE-base model
