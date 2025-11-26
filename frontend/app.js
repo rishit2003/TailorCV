@@ -550,9 +550,8 @@ function displayBulletsResults(data) {
 }
 
 function clearResults() {
-    document.getElementById('keywords-results').classList.add('hidden');
-    document.getElementById('score-results').classList.add('hidden');
-    document.getElementById('bullets-results').classList.add('hidden');
-    document.getElementById('error-message').classList.add('hidden');
+  // Only clear the error state – keep previous results visible
+  const errorMessage = document.getElementById("error-message");
+  errorMessage.classList.add("hidden");
 }
 

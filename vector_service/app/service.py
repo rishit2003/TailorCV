@@ -89,52 +89,122 @@ def process_cv_for_embedding(cv_id: str):
         raise
 
 def find_similar_chunks(
-    jd_text: str, 
+    jd_text: str,
     min_score: float = 0.6,
-    max_chunks_to_query: int = 50
+    max_chunks_to_query: int = 10000,
+    max_returned_chunks: int = 30,
+    per_cv_limit: int = 3,
 ) -> List[Dict[str, Any]]:
+    """
+    - Query Pinecone for many chunks.
+    - Prioritize bullet-like sections (experience, projects).
+    - Deduplicate:
+        * bullets (experience/projects): by (section, text) → avoid repeated bullets across CVs
+        * summaries: by (rounded_score, text) → avoid repeating the same summary
+    - Cap total chunks and per-CV chunks.
+    """
     if not jd_text or not jd_text.strip():
         raise ValueError("Job description text cannot be empty")
-    
-    if min_score < 0.0 or min_score > 1.0:
+
+    if not (0.0 <= min_score <= 1.0):
         raise ValueError("min_score must be between 0.0 and 1.0")
-    
+
     print(f"Embedding job description (length: {len(jd_text)} chars)...")
     query_vector = embed_text(jd_text)
-    
-    print(f"Querying Pinecone for top {max_chunks_to_query} chunks (will filter by threshold >= {min_score})...")
+
+    print(
+        f"Querying Pinecone for top {max_chunks_to_query} chunks "
+        f"(will filter by threshold >= {min_score})..."
+    )
     matches = query_similar(query_vector, top_k=max_chunks_to_query)
-    
-    chunks: List[Dict[str, Any]] = []
-    seen_texts = set()
+
+    bullet_sections = {"experience", "projects"}  # treat these as bullets
+    per_cv_counts: Dict[str, int] = defaultdict(int)
+
+    bullet_chunks: List[Dict[str, Any]] = []
+    summary_chunks: List[Dict[str, Any]] = []
+
+    # Dedup sets
+    # bullets: unique per (section, text)
+    seen_bullet_keys = set()
+    # summaries: unique per (score_key, text)
+    seen_summary_keys = set()
 
     for match in matches:
-        score = match.get("score", 0.0)
+        score = float(match.get("score", 0.0))
         if score < min_score:
             continue
-        
+
         meta = match.get("metadata", {}) or {}
-        text = meta.get("raw_text") or meta.get("text") or ""
+        section = meta.get("section", "")
+        cv_id = meta.get("cv_id", "")
+
+        text = (meta.get("raw_text") or meta.get("text") or "").strip()
         if not text:
             continue
 
-        key = (meta.get("cv_id"), meta.get("section"), text)
-        if key in seen_texts:
+        # enforce per-CV limit (across bullets + summaries)
+        if cv_id and per_cv_counts[cv_id] >= per_cv_limit:
             continue
-        seen_texts.add(key)
 
-        # if text in seen_texts:
-        #     continue
-        # seen_texts.add(text)
+        norm_text = text.lower().strip()
 
-        chunks.append({
-            "text": text,
-            "section": meta.get("section", ""),
-            "cv_id": meta.get("cv_id", ""),
-            "score": score
-        })
-    
-    print(f"Found {len(chunks)} chunks above threshold {min_score} (from {len(matches)} queried)")
+        if section in bullet_sections:
+            # 🔑 dedupe by (section, text) only → avoids same bullet repeated across CVs
+            key = (section, norm_text)
+            if key in seen_bullet_keys:
+                continue
+            seen_bullet_keys.add(key)
+
+            bullet_chunks.append({
+                "text": text,
+                "section": section,
+                "cv_id": cv_id,
+                "score": score,
+            })
+            per_cv_counts[cv_id] += 1
+
+        elif section == "summary":
+            # dedupe summaries by (rounded_score, text)
+            score_key = round(score, 3)
+            key = (score_key, norm_text)
+            if key in seen_summary_keys:
+                continue
+            seen_summary_keys.add(key)
+
+            summary_chunks.append({
+                "text": text,
+                "section": section,
+                "cv_id": cv_id,
+                "score": score,
+            })
+            per_cv_counts[cv_id] += 1
+
+        else:
+            # treat other sections like bullets, but still dedupe by text
+            key = (section, norm_text)
+            if key in seen_bullet_keys:
+                continue
+            seen_bullet_keys.add(key)
+
+            bullet_chunks.append({
+                "text": text,
+                "section": section,
+                "cv_id": cv_id,
+                "score": score,
+            })
+            per_cv_counts[cv_id] += 1
+
+        # global cap so we don't blow up context
+        if len(bullet_chunks) + len(summary_chunks) >= max_returned_chunks:
+            break
+
+    chunks = bullet_chunks + summary_chunks
+    print(
+        f"Found {len(chunks)} chunks above threshold {min_score} "
+        f"(from {len(matches)} queried). "
+        f"{len(bullet_chunks)} bullets, {len(summary_chunks)} summaries."
+    )
     return chunks
 
 def search_top_k_cvs(jd_text: str, top_k: int = 3, raw_top_k: int = 30) -> List[Dict[str, Any]]:

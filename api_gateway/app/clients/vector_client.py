@@ -17,8 +17,8 @@ VECTOR_SERVICE_URL = os.getenv("VECTOR_SERVICE_URL", "http://localhost:8003")
 
 def find_similar_chunks(
     jd_text: str, 
-    min_score: float = 0.75,
-    max_chunks_to_query: int = 50
+    min_score: float = 0.6,
+    max_chunks_to_query: int = 10000
 ) -> List[Dict[str, Any]]:
     """
     Find similar CV chunks to job description

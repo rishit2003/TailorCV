@@ -177,8 +177,8 @@ async def get_tailored_bullets(request: TailoredBulletsRequest):
         # Step 1: Find similar chunks (threshold-based: all chunks with score >= 0.75)
         similar_chunks = vector_client.find_similar_chunks(
             request.job_description, 
-            min_score=0.75,  # Only chunks with 75%+ similarity
-            max_chunks_to_query=50  # Query top 50, filter by threshold (ranked best to worst)
+            min_score=0.6,  # Only chunks with 75%+ similarity
+            max_chunks_to_query=10000  # Query top 50, filter by threshold (ranked best to worst)
         )
         
         if not similar_chunks:

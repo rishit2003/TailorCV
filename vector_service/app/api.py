@@ -11,8 +11,8 @@ router = APIRouter(prefix="/internal", tags=["internal"])
 # Request/Response Models
 class SimilarChunksRequest(BaseModel):
     jd_text: str
-    min_score: Optional[float] = 0.75
-    max_chunks_to_query: Optional[int] = 50
+    min_score: Optional[float] = 0.6
+    max_chunks_to_query: Optional[int] = 10000
 
 class SimilarChunksResponse(BaseModel):
     chunks: List[Dict[str, Any]]
