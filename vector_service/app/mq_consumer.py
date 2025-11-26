@@ -1,3 +1,5 @@
+import time
+import traceback
 import pika
 import json
 import os
@@ -6,7 +8,7 @@ from app.service import process_cv_for_embedding
 
 load_dotenv()
 
-RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "localhost")
+RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
 RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", "5672"))
 RABBITMQ_QUEUE = os.getenv("RABBITMQ_QUEUE", "cv_embedding_queue")
 
@@ -67,30 +69,37 @@ def start_consumer():
     Start RabbitMQ consumer in background
     Listens for cv.created events and processes them
     """
-    try:
-        connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host=RABBITMQ_HOST, port=RABBITMQ_PORT)
-        )
-        channel = connection.channel()
-        
-        # Declare queue (must match publisher)
-        channel.queue_declare(queue=RABBITMQ_QUEUE, durable=True)
-        
-        # Fair dispatch (don't give more than 1 message to worker at a time)
-        channel.basic_qos(prefetch_count=1)
-        
-        # Start consuming
-        channel.basic_consume(
-            queue=RABBITMQ_QUEUE,
-            on_message_callback=callback
-        )
-        
-        print(f"VectorService consumer started. Waiting for messages on queue: {RABBITMQ_QUEUE}")
-        print(f"RabbitMQ host: {RABBITMQ_HOST}:{RABBITMQ_PORT}")
-        
-        # Start consuming (blocking call)
-        channel.start_consuming()
-        
-    except Exception as e:
-        print(f"Failed to start RabbitMQ consumer: {e}")
-        print("Make sure RabbitMQ is running!")
+    while True:
+        try:
+            print(
+                f"[VectorService] Connecting to RabbitMQ at "
+                f"{RABBITMQ_HOST}:{RABBITMQ_PORT}, queue={RABBITMQ_QUEUE}"
+            )
+
+            connection = pika.BlockingConnection(
+                pika.ConnectionParameters(
+                    host=RABBITMQ_HOST,
+                    port=RABBITMQ_PORT,
+                )
+            )
+            channel = connection.channel()
+
+            # Declare queue (must match publisher)
+            channel.queue_declare(queue=RABBITMQ_QUEUE, durable=True)
+
+            # Fair dispatch
+            channel.basic_qos(prefetch_count=1)
+
+            channel.basic_consume(
+                queue=RABBITMQ_QUEUE,
+                on_message_callback=callback,
+            )
+
+            print("[VectorService] Consumer started. Waiting for messages...")
+            channel.start_consuming()  # blocking
+
+        except Exception as e:
+            print(f"[VectorService] Failed to start RabbitMQ consumer: {e!r}")
+            traceback.print_exc()
+            print("[VectorService] Will retry in 5 seconds...")
+            time.sleep(5)

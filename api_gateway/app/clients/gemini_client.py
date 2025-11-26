@@ -1,8 +1,13 @@
 import os
 import requests
 from dotenv import load_dotenv
+from pathlib import Path
 
-load_dotenv()
+# Explicitly load the infra/.env file
+BASE_DIR = Path(__file__).resolve().parents[2]  # go up to project root
+ENV_PATH = BASE_DIR / "infra" / ".env"
+
+load_dotenv(ENV_PATH)
 
 GEMINI_SERVICE_URL = os.getenv("GEMINI_SERVICE_URL", "http://localhost:8002")
 

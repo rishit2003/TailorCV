@@ -90,65 +90,51 @@ def process_cv_for_embedding(cv_id: str):
 
 def find_similar_chunks(
     jd_text: str, 
-    min_score: float = 0.75,
+    min_score: float = 0.6,
     max_chunks_to_query: int = 50
 ) -> List[Dict[str, Any]]:
-    """
-    Embed JD text, query Pinecone, and return ALL chunks above similarity threshold.
-    
-    Uses threshold-based approach: Returns all chunks with score >= min_score.
-    No fixed limit - uses all relevant chunks for better LLM context.
-    
-    Args:
-        jd_text: Job description text
-        min_score: Minimum similarity score threshold (default: 0.75)
-                  Only chunks with score >= min_score will be returned
-        max_chunks_to_query: Maximum chunks to query from Pinecone (default: 50)
-                            This is just a safety limit for query performance
-        
-    Returns:
-        List of chunks with score >= min_score:
-        {
-            "text": "...",
-            "section": "experience" | "projects" | "skills" | ...,
-            "cv_id": "sha256_hash",
-            "score": 0.87
-        }
-    """
     if not jd_text or not jd_text.strip():
         raise ValueError("Job description text cannot be empty")
     
     if min_score < 0.0 or min_score > 1.0:
         raise ValueError("min_score must be between 0.0 and 1.0")
     
-    # 1) Embed JD text
     print(f"Embedding job description (length: {len(jd_text)} chars)...")
     query_vector = embed_text(jd_text)
     
-    # 2) Query Pinecone for top 50 chunks (we'll filter by threshold)
     print(f"Querying Pinecone for top {max_chunks_to_query} chunks (will filter by threshold >= {min_score})...")
     matches = query_similar(query_vector, top_k=max_chunks_to_query)
     
-    # 3) Format results and filter by threshold
     chunks: List[Dict[str, Any]] = []
+    seen_texts = set()
+
     for match in matches:
         score = match.get("score", 0.0)
+        if score < min_score:
+            continue
         
-        # Only include chunks above threshold
-        if score >= min_score:
-            meta = match.get("metadata", {})
-            chunks.append({
-                "text": meta.get("text", ""),
-                "section": meta.get("section", ""),
-                "cv_id": meta.get("cv_id", ""),
-                "score": score
-            })
+        meta = match.get("metadata", {}) or {}
+        text = meta.get("raw_text") or meta.get("text") or ""
+        if not text:
+            continue
+
+        key = (meta.get("cv_id"), meta.get("section"), text)
+        if key in seen_texts:
+            continue
+        seen_texts.add(key)
+
+        # if text in seen_texts:
+        #     continue
+        # seen_texts.add(text)
+
+        chunks.append({
+            "text": text,
+            "section": meta.get("section", ""),
+            "cv_id": meta.get("cv_id", ""),
+            "score": score
+        })
     
     print(f"Found {len(chunks)} chunks above threshold {min_score} (from {len(matches)} queried)")
-    
-    if len(chunks) == 0:
-        print(f"Warning: No chunks found above threshold {min_score}. Consider lowering the threshold.")
-    
     return chunks
 
 def search_top_k_cvs(jd_text: str, top_k: int = 3, raw_top_k: int = 30) -> List[Dict[str, Any]]:

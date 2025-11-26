@@ -5,8 +5,13 @@ import requests
 import os
 from dotenv import load_dotenv
 from typing import List, Dict, Any
+from pathlib import Path
 
-load_dotenv()
+# Explicitly load the infra/.env file
+BASE_DIR = Path(__file__).resolve().parents[2]  # go up to project root
+ENV_PATH = BASE_DIR / "infra" / ".env"
+
+load_dotenv(ENV_PATH)
 
 VECTOR_SERVICE_URL = os.getenv("VECTOR_SERVICE_URL", "http://localhost:8003")
 
@@ -37,7 +42,7 @@ def find_similar_chunks(
                 "min_score": min_score,
                 "max_chunks_to_query": max_chunks_to_query
             },
-            timeout=30
+            timeout=120
         )
         response.raise_for_status()
         data = response.json()
@@ -61,7 +66,7 @@ def search_top_k_cvs(jd_text: str, top_k: int = 3, raw_top_k: int = 30) -> List[
         response = requests.post(
             f"{VECTOR_SERVICE_URL}/internal/search_top_k_cvs",
             json={"jd_text": jd_text, "top_k": top_k, "raw_top_k": raw_top_k},
-            timeout=30
+            timeout=120
         )
         response.raise_for_status()
         data = response.json()
