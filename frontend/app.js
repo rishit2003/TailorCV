@@ -2,7 +2,7 @@
 // Configuration
 // ==========================================
 
-const API_BASE_URL = "http://localhost:8000/api";
+const API_BASE_URL = "http://34.95.0.31:8000/api";
 
 // Global state
 let selectedCVId = null;
