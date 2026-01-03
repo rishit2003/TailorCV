@@ -612,31 +612,41 @@ cp .env.example .env
 ```
 
 ## 🐳 Run with Docker (Recommended)
+1. **Build all services**
 
-4. **Start infrastructure (MongoDB, Redis, RabbitMQ)**
+From the project root:
 ```bash
 cd infra
+docker-compose build
+```
+
+2. **Start the entire system**
+```bash
+docker-compose up
+```
+Or run in detached mode:
+```bash
 docker-compose up -d
 ```
 
-5. **Run services (in separate terminals)**
-```bash
-# Terminal 1 - StoringService
-cd storing_service
-uvicorn app.main:app --host 0.0.0.0 --port 8001
+3. **Verify running services**
 
-# Terminal 2 - GeminiService
-cd gemini_service
-uvicorn app.main:app --host 0.0.0.0 --port 8002
+Once started, the following services should be available:
 
-# Terminal 3 - VectorService
-cd vector_service
-uvicorn app.main:app --host 0.0.0.0 --port 8003
 
-# Terminal 4 - API Gateway
-cd api_gateway
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
+| Service | URL |
+|---------|-----|
+| **API Gateway** | http://localhost:8000 |
+| **StoringService** | http://localhost:8001 |
+| **GeminiService** | http://localhost:8002 |
+| **VectorService** | http://localhost:8003 |
+| **RabbitMQ Management UI** | http://localhost:15672 |
+
+Note: All inter-service communication and infrastructure networking is handled automatically by Docker Compose.
+
+---
+
+
 
 6. **Test the system**
 ```bash
