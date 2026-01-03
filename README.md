@@ -1,10 +1,14 @@
 # TailorCV - AI-Powered CV Optimization Platform
 
-TailorCV is a microservices-based platform that helps users optimize their CVs for specific job descriptions using AI. The system structures CVs, identifies missing keywords, scores CV-JD alignment, finds similar CVs, and generates tailored bullet points.
+TailorCV is a microservices-based platform that helps job applicants tailor their CVs to specific job descriptions.
+
+Many applicants submit the same CV to dozens of roles, even though each job values different skills and keywords. TailorCV addresses this by structuring CVs, identifying missing keywords, scoring CV–JD alignment, finding semantically similar CVs, and generating tailored bullet points using AI.
+
+The system is designed to be scalable, cost-aware, and production oriented.
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Architecture Overview](#architecture-overview)
 - [System Components](#system-components)
@@ -17,18 +21,18 @@ TailorCV is a microservices-based platform that helps users optimize their CVs f
 
 ---
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
 TailorCV follows a **microservices architecture** with 4 independent services:
 
 ```
 Client
    ↓
-API Gateway (0)
+API Gateway
    ↓
-   ├─→ StoringService (1) ←→ MongoDB (5) + Redis (4)
-   ├─→ GeminiService (2)
-   └─→ VectorService (3) ←→ VectorDB/Pinecone (7)
+   ├─→ StoringService ←→ MongoDB + Redis
+   ├─→ GeminiService
+   └─→ VectorService ←→ VectorDB/Pinecone
 ```
 
 ### Architecture Diagram
@@ -46,7 +50,7 @@ API Gateway (0)
 
 ---
 
-## 🧩 System Components
+## System Components
 
 ### Services
 
@@ -61,14 +65,14 @@ API Gateway (0)
 
 | Component | Purpose |
 |-----------|---------|
-| **MongoDB (5)** | Primary CV storage (owned by StoringService) |
-| **Redis (4)** | Cache for latest CV lookup (owned by StoringService) |
-| **RabbitMQ (6)** | Event queue for async embedding (cv.created events) |
-| **Pinecone (7)** | Vector database for semantic search (owned by VectorService) |
+| **MongoDB** | Primary CV storage (owned by StoringService) |
+| **Redis** | Cache for latest CV lookup (owned by StoringService) |
+| **RabbitMQ** | Event queue for async embedding (cv.created events) |
+| **Pinecone** | Vector database for semantic search (owned by VectorService) |
 
 ---
 
-## 🌐 Public API Endpoints
+## Public API Endpoints
 
 All endpoints are exposed through the **API Gateway** on port 8000.
 
@@ -275,7 +279,7 @@ Same as `/attach_cv` but processes multiple files in batch.
 
 ---
 
-## 🔄 Data Flow & Architecture Decisions
+## Data Flow & Architecture Decisions
 
 ### Hash-Based Deduplication Strategy
 
@@ -353,10 +357,10 @@ This is the **desired behavior** because:
 
 #### Why This Design?
 
-- ✅ Simple: Single key, no user management needed
-- ✅ Fast: O(1) lookup for latest CV
-- ✅ Stateless: No authentication required
-- ✅ Clean: Every `StoreCV` updates this one key
+- Simple: Single key, no user management needed
+- Fast: O(1) lookup for latest CV
+- Stateless: No authentication required
+- Clean: Every `StoreCV` updates this one key
 
 #### getLatestCV Flow
 
@@ -411,10 +415,10 @@ User receives "Upload successful" immediately ✓
 
 #### Benefits
 
-✅ **Fast user response**: Upload returns in <1s  
-✅ **Scalable**: Can scale VectorService consumers independently  
-✅ **Resilient**: Retries on failure, dead letter queue  
-✅ **Decoupled**: StoringService doesn't wait for embedding  
+**Fast user response**: Upload returns in <1s  
+**Scalable**: Can scale VectorService consumers independently  
+**Resilient**: Retries on failure, dead letter queue  
+**Decoupled**: StoringService doesn't wait for embedding  
 
 ---
 
@@ -494,7 +498,7 @@ If a section is very large (e.g., 10 jobs in experience), consider splitting int
 
 ---
 
-## 📁 Folder Structure
+## Folder Structure
 
 ```
 TailorCV/
@@ -553,7 +557,7 @@ TailorCV/
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 ### Backend Framework
 - **FastAPI** (Python 3.11+) - All services
@@ -587,7 +591,7 @@ TailorCV/
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 TailorCV is fully Dockerized and can be started with a single command using Docker Compose.
 
 ### Prerequisites
@@ -611,7 +615,7 @@ cp .env.example .env
 # Edit .env with your API keys and configuration
 ```
 
-## 🐳 Run with Docker (Recommended)
+## Run with Docker (Recommended)
 1. **Build all services**
 
 From the project root:
@@ -656,7 +660,7 @@ curl -X POST http://localhost:8000/attach_cv \
 
 ---
 
-## 📖 Service Details
+## Service Details
 
 ### API Gateway (Port 8000)
 
@@ -735,7 +739,7 @@ curl -X POST http://localhost:8000/attach_cv \
 
 ---
 
-## 🔒 Security Considerations (Future)
+## Security Considerations (Future)
 
 - **No authentication currently** - suitable for MVP/demo
 - Future considerations:
@@ -746,7 +750,7 @@ curl -X POST http://localhost:8000/attach_cv \
 
 ---
 
-## 📊 Monitoring & Observability (Future)
+## Monitoring & Observability (Future)
 
 - Health check endpoints on all services
 - Structured logging
@@ -755,7 +759,7 @@ curl -X POST http://localhost:8000/attach_cv \
 
 ---
 
-## 🧪 Testing Strategy (Future)
+## Testing Strategy (Future)
 
 Each service will have:
 - Unit tests for business logic
@@ -764,7 +768,7 @@ Each service will have:
 
 ---
 
-## ☁️ Deployment Notes
+## Deployment Notes
 
 TailorCV was successfully deployed on a **Google Cloud Platform (GCP) virtual machine** using Dockerized microservices.
 
