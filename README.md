@@ -31,6 +31,11 @@ API Gateway (0)
    └─→ VectorService (3) ←→ VectorDB/Pinecone (7)
 ```
 
+### Architecture Diagram
+<img width="468" height="228" alt="architecture_diagram" src="https://github.com/user-attachments/assets/7f7a7cb7-568e-4f92-8dae-7528a6e20215" />
+
+*High-level microservices architecture showing API Gateway, StoringService, GeminiService, VectorService, and supporting infrastructure.*
+
 ### Key Design Principles
 
 1. **Service Independence**: Each service is independently deployable with its own dependencies
@@ -66,6 +71,11 @@ API Gateway (0)
 ## 🌐 Public API Endpoints
 
 All endpoints are exposed through the **API Gateway** on port 8000.
+
+### Client Interface
+<img width="1104" height="1337" alt="frontend" src="https://github.com/user-attachments/assets/3583d429-de4d-4e5a-b420-a66841a8b891" />
+
+*Example client interface used to upload CVs, analyze job descriptions, and view results.*
 
 ### 1. `POST /attach_cv`
 **Upload and structure a CV**
@@ -115,6 +125,10 @@ All endpoints are exposed through the **API Gateway** on port 8000.
 }
 ```
 
+#### Example Output
+<img width="1018" height="669" alt="keyword" src="https://github.com/user-attachments/assets/1646adcd-ea48-4492-8b2d-6f68a207f4c2" />
+
+
 **Flow:**
 1. Gateway → GeminiService `missing-keywords`
 2. GeminiService internally calls StoringService `getCV(cv_id)`
@@ -141,6 +155,9 @@ All endpoints are exposed through the **API Gateway** on port 8000.
   "explanation": "Strong match due to Python experience and ML projects..."
 }
 ```
+
+#### Example Output
+<img width="868" height="1228" alt="score" src="https://github.com/user-attachments/assets/0d1e1458-5e0b-4d6c-b20c-b19740874da6" />
 
 **Flow:**
 1. Gateway → GeminiService `score`
@@ -208,6 +225,10 @@ All endpoints are exposed through the **API Gateway** on port 8000.
   ]
 }
 ```
+
+#### Example Output
+<img width="866" height="578" alt="bullets" src="https://github.com/user-attachments/assets/628bef24-8b67-44eb-8fa9-c613cde0a6ed" />
+
 
 **Flow:**
 1. Gateway → VectorService `similar-chunks` (get relevant CV chunks)
@@ -280,6 +301,9 @@ Same as `/attach_cv` but processes multiple files in batch.
 }
 ```
 
+#### Stored CV Documents
+<img width="1149" height="1276" alt="database" src="https://github.com/user-attachments/assets/dd71e261-31fd-48e0-8640-c6062c9fb2b2" />
+
 #### StoreCV Logic with Deduplication
 
 ```
@@ -303,11 +327,11 @@ Same as `/attach_cv` but processes multiple files in batch.
 
 #### Benefits
 
-✅ **Deduplication**: Same CV uploaded 100 times = stored once  
-✅ **Cost Savings**: Only embed unique CVs (Pinecone + compute costs)  
-✅ **Consistency**: Same `cv_id` used across MongoDB, Redis, RabbitMQ, Pinecone  
-✅ **Idempotency**: Upload operations are safe to repeat  
-✅ **Clean VectorDB**: No duplicate embeddings in search results  
+**Deduplication**: Same CV uploaded 100 times = stored once  
+**Cost Savings**: Only embed unique CVs (Pinecone + compute costs)  
+**Consistency**: Same `cv_id` used across MongoDB, Redis, RabbitMQ, Pinecone  
+**Idempotency**: Upload operations are safe to repeat  
+**Clean VectorDB**: No duplicate embeddings in search results  
 
 #### CV Updates
 
@@ -414,20 +438,22 @@ Each section in the structured CV JSON becomes **one chunk**:
 }
 ```
 
+#### Pinecone Index View
+<img width="2247" height="1217" alt="pinecone" src="https://github.com/user-attachments/assets/5977751f-5659-4cee-81c0-9174db0016f6" />
+
+
 #### Why Section-Based Chunking?
 
-✅ **Semantic coherence**: Each chunk is topically related  
-✅ **Clean metadata**: Easy to filter by section  
-✅ **Right granularity**: Not too small, not too large  
-✅ **Simple implementation**: Matches JSON structure  
+**Semantic coherence**: Each chunk is topically related  
+**Clean metadata**: Easy to filter by section  
+**Right granularity**: Not too small, not too large  
+**Simple implementation**: Matches JSON structure  
 
 #### Future Consideration
 
 If a section is very large (e.g., 10 jobs in experience), consider splitting into:
 - Experience_1, Experience_2, etc.
 - Add `chunk_index` to metadata
-
-For now, keep it simple with 1 section = 1 chunk.
 
 ---
 
@@ -437,10 +463,10 @@ For now, keep it simple with 1 section = 1 chunk.
 
 #### Why REST?
 
-✅ **Simple**: Standard HTTP/JSON  
-✅ **Debug-friendly**: Use curl/Postman for testing  
-✅ **Language agnostic**: Easy to replace services  
-✅ **Familiar**: Most developers know REST  
+**Simple**: Standard HTTP/JSON  
+**Debug-friendly**: Use curl/Postman for testing  
+**Language agnostic**: Easy to replace services  
+**Familiar**: Most developers know REST  
 
 #### Service URLs
 
@@ -562,16 +588,14 @@ TailorCV/
 ---
 
 ## 🚀 Getting Started
+TailorCV is fully Dockerized and can be started with a single command using Docker Compose.
 
 ### Prerequisites
 
-- Python 3.11+
 - Docker & Docker Compose
-- MongoDB (or Docker container)
-- Redis (or Docker container)
-- RabbitMQ (or Docker container)
 - Pinecone account & API key
 - Google Gemini API key
+**Note: Python is only required if running services outside Docker (development mode).**
 
 ### Installation
 
@@ -587,13 +611,7 @@ cp .env.example .env
 # Edit .env with your API keys and configuration
 ```
 
-3. **Install dependencies for each service**
-```bash
-cd api_gateway && pip install -r requirements.txt
-cd ../storing_service && pip install -r requirements.txt
-cd ../gemini_service && pip install -r requirements.txt
-cd ../vector_service && pip install -r requirements.txt
-```
+## 🐳 Run with Docker (Recommended)
 
 4. **Start infrastructure (MongoDB, Redis, RabbitMQ)**
 ```bash
@@ -736,13 +754,17 @@ Each service will have:
 
 ---
 
-## 🚢 Deployment
+## ☁️ Deployment Notes
 
-Each service is independently deployable:
+TailorCV was successfully deployed on a **Google Cloud Platform (GCP) virtual machine** using Dockerized microservices.
 
-1. **Docker**: Each service has its own Dockerfile
-2. **Kubernetes** (future): Deploy as separate pods
-3. **Cloud** (future): Deploy to AWS/GCP/Azure
+Due to **budget constraints**, the cloud deployment is currently **not kept running 24/7**.  
+The system is fully reproducible locally using Docker Compose and can be redeployed to GCP at any time.
+
+This deployment validated:
+- Service-to-service communication
+- RabbitMQ async pipelines
+- Pinecone and Gemini API integration in a cloud environment
 
 ---
 
